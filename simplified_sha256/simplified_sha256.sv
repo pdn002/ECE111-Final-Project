@@ -49,6 +49,7 @@ assign tstep = (i - 1);
 function logic [15:0] determine_num_blocks(input logic [31:0] size);
 
   // Student to add function implementation
+  words = size*32;
 
 endfunction
 
