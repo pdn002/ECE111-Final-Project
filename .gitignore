@@ -1,0 +1,4 @@
+*.qsf
+*.qpf
+*.bak
+simplified_sha256/db
