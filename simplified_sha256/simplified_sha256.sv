@@ -51,7 +51,10 @@ function logic [15:0] determine_num_blocks(input logic [31:0] size);
   // Student to add function implementation
   words = size*32;
   estimate_blocks = words/512;
-  if (estimate_blocks % 1
+  if (estimate_blocks % 1 != 0)
+		total_blocks = total_blocks + 1;
+		return total_blocks;
+  end
   
 
 endfunction
