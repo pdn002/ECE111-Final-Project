@@ -46,19 +46,17 @@ assign tstep = (i - 1);
 
 // Note : Function defined are for reference purpose. Feel free to add more functions or modify below.
 // Function to determine number of blocks in memory to fetch
-function logic [15:0] determine_num_blocks(input logic [31:0] size);
-	
-  // Student to add function implementation
-
+function logic [15:0] determine_num_blocks(input logic [31:0] size); //assume that size input is in words
+// 20 words
+// 20 * 32 = 640 bits
+//always going to be 20 words
+logic words[15:0] =  size *32;
+words = words/512;
+if(words % 512) != 0 
+determine_num_blocks = words + 1;
+else
+determine_num_blocks = blocks;
 endfunction
-
-
-
-
-
-
-
-
 
 
 function logic [255:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, h, w, k);
@@ -71,23 +69,6 @@ S0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
 maj = (a & b) ^ (a & c) ^ (b & c);
 t2 = maj + S0;
 sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g};
-end
-endfunction
-
-// SHA256 hash round
-function logic [255:0] sha256_op(input logic [31:0] a, b, c, d, e, f, g, h, w,
-                                 input logic [7:0] t);
-    logic [31:0] S1, S0, ch, maj, t1, t2; // internal signals
-begin
-    S1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
-    // Student to add remaning code below
-    // Refer to SHA256 discussion slides to get logic for this function
-    ch = 
-    t1 = 
-    S0 = 
-    maj = 
-    t2 = 
-    sha256_op = {t1 + t2, a, b, c, d + t1, e, f, g};
 end
 endfunction
 
@@ -130,7 +111,7 @@ begin
     IDLE: begin 
        if(start) begin
        // Student to add rest of the code  
-
+		 
 
 
 
