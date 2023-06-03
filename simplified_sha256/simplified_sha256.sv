@@ -15,12 +15,13 @@ enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE} state;
 
 // Local variables
 logic [31:0] w[64];
-logic [31:0] message[20];
+logic [31:0] message[20]; //message is defined here
 logic [31:0] wt;
 logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
 logic [31:0] a, b, c, d, e, f, g, h;
 logic [ 7:0] i, j;
 logic [15:0] offset; // in word address
+//offset = 32
 logic [ 7:0] num_blocks;
 logic        cur_we;
 logic [15:0] cur_addr;
@@ -43,6 +44,7 @@ parameter int k[0:63] = '{
 
 assign num_blocks = determine_num_blocks(NUM_OF_WORDS); 
 assign tstep = (i - 1);
+assign offset = 32; //THIS MAY BE INCORRECT. We increment by 32 bits so that each new word does not ovewrite the last up until the 640th bit = 20 words
 
 // Note : Function defined are for reference purpose. Feel free to add more functions or modify below.
 // Function to determine number of blocks in memory to fetch
@@ -51,11 +53,11 @@ function logic [15:0] determine_num_blocks(input logic [31:0] size); //assume th
 // 20 * 32 = 640 bits
 //always going to be 20 words
 logic words[15:0] =  size *32;
-words = words/512;
-if(words % 512) != 0 
+words = words/512; //bit size of words
+if(size % 512) != 0  //determine if there is a carry over after the last division. Account for the 0 edge case
 determine_num_blocks = words + 1;
 else
-determine_num_blocks = blocks;
+determine_num_blocks = words;
 endfunction
 
 
@@ -110,11 +112,30 @@ begin
     // Initialize hash values h0 to h7 and a to h, other variables and memory we, address offset, etc
     IDLE: begin 
        if(start) begin
+		 
        // Student to add rest of the code  
 		 
-
-
-
+		 h0 = 32'h6a09e667;
+       h1 = 32'hbb67ae85;
+       h2 = 32'h3c6ef372;
+       h3 = 32'ha54ff53a;
+       h4 = 32'h510e527f;
+       h5 = 32h'9b05688c;
+		 h6 = 32'h1f83d9ab;
+		 h7 = 32'h5be0cd19;
+		 
+		 //pre-defined has codes defined on slides
+		 //a -h are set to h0-h7 at the begining of each execution
+		 a = h0;
+		 b = h1;
+		 f = h5;
+		 c = h2;
+		 d = h3;
+		 e = h4;
+		 g = h6;
+		 h = h7;
+		 
+		 
        end
     end
 
@@ -124,14 +145,7 @@ begin
     BLOCK: begin
 	// Fetch message in 512-bit block size
 	// For each of 512-bit block initiate hash value computation
-       
-
-
-
    
-
-
-
 
     
 
@@ -143,31 +157,19 @@ begin
     // move to WRITE stage
     COMPUTE: begin
 	// 64 processing rounds steps for 512-bit block 
-        if (i <= 64) begin
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        end
-    end
+        if (i <= 64) 
+		  begin
+				{a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w, k[j]);
+				
+		  end
 
     // h0 to h7 each are 32 bit hashes, which makes up total 256 bit value
+	 
     // h0 to h7 after compute stage has final computed hash value
     // write back these h0 to h7 to memory starting from output_addr
-    WRITE: begin
-   
-
-
+    WRITE: 
+	 begin
+			
     end
    endcase
   end
