@@ -71,7 +71,7 @@ begin
     S1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
     // Student to add remaning code below
     // Refer to SHA256 discussion slides to get logic for this function
-    ch = (e & f) ^ (~e & g);
+    ch = (e & f) ^ ((~e) & g);
     t1 = h + S1 + ch + k[t] + w;
     S0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
     maj = (a & b) ^ (a & c) ^ (b & c);
@@ -117,7 +117,7 @@ begin
   else case (state)
     // Initialize hash values h0 to h7 and a to h, other variables and memory we, address offset, etc
     IDLE: begin 
-       if(start) begin
+	    if(start) begin
        // Student to add rest of the code  
 			 h0 <= 32'h6a09e667;
 			 h1 <= 32'hbb67ae85;
@@ -127,7 +127,15 @@ begin
 			 h5 <= 32'h9b05688c;
 			 h6 <= 32'h1f83d9ab;
 			 h7 <= 32'h5be0cd19;
-			 {a, b, c, d, e, f, g, h} <= {0, 0, 0, 0, 0, 0, 0, 0}
+			 
+			 a <= 32'h6a09e667;
+			 b <= 32'hbb67ae85;
+			 c <= 32'h3c6ef372;
+			 d <= 32'ha54ff53a;
+			 e <= 32'h510e527f;
+			 f <= 32'h9b05688c;
+			 g <= 32'h1f83d9ab;
+			 h <= 32'h5be0cd19;
 			 
 			 cur_we <= 1;
 			 offset <= 0;
@@ -141,7 +149,7 @@ begin
     end
 	 
 	 READ: begin
-	 
+	    
 	 
 	 end
 
@@ -151,14 +159,16 @@ begin
     BLOCK: begin
 	// Fetch message in 512-bit block size
 	// For each of 512-bit block initiate hash value computation
-       
-
-
-
-     {a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w, k[t]); // inputs to function need to be corrected
-
-
-
+		 
+		 for (t = 0; t < 64; t++) begin
+			  if (t < 16) begin
+					w[t] = dpsram_tb[t];
+			  end else begin
+					s0 = rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
+					s1 = rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
+					w[t] = w[t-16] + s0 + w[t-7] + s1;
+			  end
+		 end
 
     
 
@@ -171,16 +181,9 @@ begin
     COMPUTE: begin
 	// 64 processing rounds steps for 512-bit block 
         if (i <= 64) begin
-
-
-
-
-
-
-
-
-
-
+		  
+		  
+		     {a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w, k[t]); // inputs to function need to be corrected
 
 
 
