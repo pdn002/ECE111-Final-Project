@@ -152,23 +152,23 @@ begin
 	    offset <= 32 * i;
 		 state <= READ2;
 	 end
-	 READ2: begin // TODO: possible oportunity for optimization here
+	 READ2: begin // TODO: possible oportunity for optimization here since this state is just buffer rn
 	    // data is available on next cycle not this one
 	    state <= Read3;
 	 end
 	 READ3: begin
 	    // read in 32 bits
-	    memory_block[32*i+31:32*i] <= mem_read_data;
-		 
-		 i <= i + 1;
+	    message[i] <= mem_read_data;
 		 
 		 // read all 20 locations so move to BLOCK case
 		 if (i + 1 == 20) begin
 		    state <= BLOCK;
+			 i <= 0;
 		 end
 		 // still need to read more memory
 		 else begin
 			 state <= READ1;
+			 i <= i + 1;
 		 end
 	 end
 
