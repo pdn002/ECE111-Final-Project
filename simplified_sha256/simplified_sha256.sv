@@ -153,11 +153,22 @@ begin
 		 state <= READ2;
 	 end
 	 READ2: begin
-	    // data is available on next cycle not this one
+	    // get address of following data
+		 offset <= 32 * (i + 1)
 	    state <= Read3;
+		 // note: data for READ1 not available until next cycle
 	 end
 	 READ3: begin
-	    // read in 32 bits
+	    // read in 32 bits for address in READ1
+	    memory_block[32*i+31:32*i] <= mem_read_data;
+		 
+		 i <= i + 1;
+		 
+		 // still need to read more memory
+		 state <= READ4;
+	 end
+	 READ4: begin
+	    // read in 32 bits for address in READ2
 	    memory_block[32*i+31:32*i] <= mem_read_data;
 		 
 		 i <= i + 1;
@@ -179,13 +190,13 @@ begin
 	// Fetch message in 512-bit block size
 	// For each of 512-bit block initiate hash value computation
 		 
-		 for (t = 0; t < 64; t++) begin
+		 for (int t = 0; t < 64; t++) begin
 			  if (t < 16) begin
-					w[t] = dpsram_tb[t];
+					w[t] <= dpsram_tb[t];
 			  end else begin
-					s0 = rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
-					s1 = rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
-					w[t] = w[t-16] + s0 + w[t-7] + s1;
+					s0 <= rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
+					s1 <= rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
+					w[t] <= w[t-16] + s0 + w[t-7] + s1;
 			  end
 		 end
 
