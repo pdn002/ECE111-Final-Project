@@ -152,23 +152,12 @@ begin
 	    offset <= 32 * i;
 		 state <= READ2;
 	 end
-	 READ2: begin
-	    // get address of following data
-		 offset <= 32 * (i + 1)
+	 READ2: begin // TODO: possible oportunity for optimization here
+	    // data is available on next cycle not this one
 	    state <= Read3;
-		 // note: data for READ1 not available until next cycle
 	 end
 	 READ3: begin
-	    // read in 32 bits for address in READ1
-	    memory_block[32*i+31:32*i] <= mem_read_data;
-		 
-		 i <= i + 1;
-		 
-		 // still need to read more memory
-		 state <= READ4;
-	 end
-	 READ4: begin
-	    // read in 32 bits for address in READ2
+	    // read in 32 bits
 	    memory_block[32*i+31:32*i] <= mem_read_data;
 		 
 		 i <= i + 1;
