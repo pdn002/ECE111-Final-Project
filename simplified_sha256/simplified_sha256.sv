@@ -47,15 +47,17 @@ assign tstep = (i - 1);
 // Note : Function defined are for reference purpose. Feel free to add more functions or modify below.
 // Function to determine number of blocks in memory to fetch
 function logic [15:0] determine_num_blocks(input logic [31:0] size);
-
+  logic [64:0] full_len; // max message length (2^64) + num of padding bits
+  logic [15:0] num_blocks;
+  
   // Student to add function implementation
-  words = size*32;
-  estimate_blocks = words/512;
-  if (estimate_blocks % 1 != 0)
-		total_blocks = total_blocks + 1;
-		return total_blocks;
+  full_len = (size * 32) + 1 + 64 // message bits + all padding bits
+  num_blocks = full_len / 512;
+  if (num_blocks % 1 != 0)
+		num_blocks = num_blocks + 1;
+		return num_blocks;
   end
-		return estimate_blocks;
+		return num_blocks;
   
 
 endfunction
