@@ -137,10 +137,9 @@ begin
 			 g <= 32'h1f83d9ab;
 			 h <= 32'h5be0cd19;
 			 
-			 cur_we <= 1;
+			 cur_we <= 0;
 			 offset <= 0;
 			 cur_addr <= 0;
-			 cur_write_data <= 0;
 			 i <= 0;
 			 j <= 0;
 			 
@@ -148,9 +147,29 @@ begin
        end
     end
 	 
-	 READ: begin
-	    
-	 
+	 READ1: begin
+	    // get address of data
+	    offset <= 32 * i;
+		 state <= READ2;
+	 end
+	 READ2: begin
+	    // data is available on next cycle not this one
+	    state <= Read3;
+	 end
+	 READ3: begin
+	    // read in 32 bits
+	    memory_block[32*i+31:32*i] <= mem_read_data;
+		 
+		 i <= i + 1;
+		 
+		 // read all 20 locations so move to BLOCK case
+		 if (i + 1 == 20) begin
+		    state <= BLOCK;
+		 end
+		 // still need to read more memory
+		 else begin
+			 state <= READ1;
+		 end
 	 end
 
     // SHA-256 FSM 
