@@ -3,3 +3,5 @@
 *.bak
 *.qws
 simplified_sha256/db
+simplified_sha256/incremental_db
+simplified_sha256/output_files

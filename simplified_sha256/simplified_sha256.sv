@@ -7,7 +7,7 @@ module simplified_sha256 #(parameter integer NUM_OF_WORDS = 20)(
  input logic [31:0] mem_read_data);
 
 // FSM state variables 
-enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE} state;
+enum logic [2:0] {IDLE, READ1, READ2, READ3, BLOCK, COMPUTE, WRITE} state;
 
 // NOTE : Below mentioned frame work is for reference purpose.
 // Local variables might not be complete and you might have to add more variables
@@ -15,18 +15,20 @@ enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE} state;
 
 // Local variables
 logic [31:0] w[64];
-logic [31:0] message[20];
+logic [31:0] message[20 + 12]; // only 20 words but add 12 for padding
 logic [31:0] wt;
 logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
 logic [31:0] a, b, c, d, e, f, g, h;
-logic [ 7:0] i, j;
+logic [ 7:0] i; // used as index for making case statements mimick for loop functionality
+logic [ 7:0] j; // used as index for which blcok is being processed
 logic [15:0] offset; // in word address
 logic [ 7:0] num_blocks;
 logic        cur_we;
 logic [15:0] cur_addr;
 logic [31:0] cur_write_data;
-logic [512:0] memory_block;
-logic [ 7:0] tstep;
+logic [512:0] memory_block; // not used
+logic [ 7:0] tstep; // not used
+logic   [31:0] s1, s0;
 
 // SHA256 K constants
 parameter int k[0:63] = '{
@@ -42,23 +44,24 @@ parameter int k[0:63] = '{
 
 
 assign num_blocks = determine_num_blocks(NUM_OF_WORDS); 
-assign tstep = (i - 1);
+assign tstep = (i - 1); // not used
 
 // Note : Function defined are for reference purpose. Feel free to add more functions or modify below.
 // Function to determine number of blocks in memory to fetch
-function logic [15:0] determine_num_blocks(input logic [31:0] size);
+function logic [15:0] determine_num_blocks(input logic [31:0] num_words);
   logic [64:0] full_len; // max message length (2^64) + num of padding bits
   logic [15:0] num_blocks;
   
   // Student to add function implementation
-  full_len = (size * 32) + 1 + 64 // message bits + all padding bits
+  full_len = (num_words * 32) + 1 + 64; // message bits + all padding bits
   num_blocks = full_len / 512;
-  if (num_blocks % 1 != 0)
+  if (num_blocks % 1 != 0) begin
 		num_blocks = num_blocks + 1;
 		return num_blocks;
   end
+  else begin
 		return num_blocks;
-  
+  end  
 
 endfunction
 
@@ -128,14 +131,14 @@ begin
 			 h6 <= 32'h1f83d9ab;
 			 h7 <= 32'h5be0cd19;
 			 
-			 a <= 32'h6a09e667;
-			 b <= 32'hbb67ae85;
-			 c <= 32'h3c6ef372;
-			 d <= 32'ha54ff53a;
-			 e <= 32'h510e527f;
-			 f <= 32'h9b05688c;
-			 g <= 32'h1f83d9ab;
-			 h <= 32'h5be0cd19;
+			 a <= 0;
+			 b <= 0;
+			 c <= 0;
+			 d <= 0;
+			 e <= 0;
+			 f <= 0;
+			 g <= 0;
+			 h <= 0;
 			 
 			 cur_we <= 0;
 			 offset <= 0;
@@ -143,7 +146,7 @@ begin
 			 i <= 0;
 			 j <= 0;
 			 
-			 state <= READ;
+			 state <= READ1;
        end
     end
 	 
@@ -152,23 +155,32 @@ begin
 	    offset <= 32 * i;
 		 state <= READ2;
 	 end
-	 READ2: begin // TODO: possible oportunity for optimization here since this state is just buffer rn
+	 READ2: begin
 	    // data is available on next cycle not this one
-	    state <= Read3;
+	    state <= READ3;
 	 end
 	 READ3: begin
 	    // read in 32 bits
 	    message[i] <= mem_read_data;
 		 
-		 // read all 20 locations so move to BLOCK case
+		 // have read all 20 locations so move to BLOCK case
 		 if (i + 1 == 20) begin
+		 
+		    // add padding
+		    message[20] = 32'h80000000;
+          for (int m = 21; m < 31; m++) begin
+             message[m] = 32'h00000000;
+          end
+          message[31]  = NUM_OF_WORDS * 32; //32'd640;
+			 
+		    i <= 0;
 		    state <= BLOCK;
-			 i <= 0;
 		 end
+		 
 		 // still need to read more memory
 		 else begin
+		    i <= i + 1;
 			 state <= READ1;
-			 i <= i + 1;
 		 end
 	 end
 
@@ -179,17 +191,28 @@ begin
 	// Fetch message in 512-bit block size
 	// For each of 512-bit block initiate hash value computation
 		 
-		 for (int t = 0; t < 64; t++) begin
-			  if (t < 16) begin
-					w[t] <= dpsram_tb[t];
-			  end else begin
-					s0 <= rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
-					s1 <= rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
-					w[t] <= w[t-16] + s0 + w[t-7] + s1;
-			  end
+		 if (j < num_blocks) begin
+			 // initialize abcdefgh for compression
+			 {a, b, c, d, e, f, g, h} <= {h0, h1, h2, h3, h4, h5, h6, h7};
+			 
+			 // word expansion for a single block
+			 for (int t = 0; t < 64; t++) begin
+				  if (t < 16) begin
+						w[t] <= message[t + (16*j)]; // 16*j is an offset to move to other blocks
+				  end else begin
+						s0 <= rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
+						s1 <= rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
+						w[t] <= w[t-16] + s0 + w[t-7] + s1;
+				  end
+			 end
+			 
+			 state <= COMPUTE;
 		 end
-
-    
+		 
+		 // processed all blocks
+		 else begin
+		    state <= WRITE;
+		 end
 
     end
 
@@ -198,16 +221,34 @@ begin
     // there are still number of message blocks available in memory otherwise
     // move to WRITE stage
     COMPUTE: begin
-	// 64 processing rounds steps for 512-bit block 
-        if (i <= 64) begin
+
+		  // 64 processing rounds steps for 512-bit block using sha256_op
+        if (i < 64) begin
 		  
-		  
-		     {a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w, k[t]); // inputs to function need to be corrected
-
-
-
-
+		     {a, b, c, d, e, f, g, h} <= sha256_op(a, b, c, d, e, f, g, h, w[i], i); // inputs to function need to be corrected
+			  
+			  i <= i + 1;
+			  
+			  state <= COMPUTE;
         end
+		  
+		  // end of 64 processing rounds
+		  else begin
+		     h0 <= h0 + a;
+			  h1 <= h1 + b;
+			  h2 <= h2 + c;
+			  h3 <= h3 + d;
+			  h4 <= h4 + e;
+			  h5 <= h5 + f;
+			  h6 <= h6 + g;
+			  h7 <= h7 + h;
+			  
+			  i <= 0;
+			  
+			  j <= j + 1; // signifies moving to next block
+			  
+			  state <= BLOCK;
+		  end
     end
 
     // h0 to h7 each are 32 bit hashes, which makes up total 256 bit value
