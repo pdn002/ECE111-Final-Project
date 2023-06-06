@@ -16,18 +16,18 @@ enum logic [2:0] {IDLE, READ1, READ2, READ3, BLOCK, COMPUTE, WRITE} state;
 // Local variables
 logic [31:0] w[64];
 logic [31:0] message[20 + 12]; // only 20 words but add 12 for padding
-logic [31:0] wt; // not used
+// logic [31:0] wt; // not used
 logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
 logic [31:0] a, b, c, d, e, f, g, h;
 logic [ 7:0] i; // used as index for making case statements mimick for loop functionality
-logic [ 7:0] j; // used as index for which blcok is being processed
+logic [ 7:0] j; // used as index for which block is being processed
 logic [15:0] offset; // in word address
 logic [ 7:0] num_blocks;
 logic        cur_we;
 logic [15:0] cur_addr;
 logic [31:0] cur_write_data;
-logic [512:0] memory_block; // not used
-logic [ 7:0] tstep; // not used
+// logic [512:0] memory_block; // not used
+// logic [ 7:0] tstep; // not used
 logic   [31:0] s1, s0;
 
 // SHA256 K constants
