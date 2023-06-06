@@ -55,7 +55,7 @@ function logic [15:0] determine_num_blocks(input logic [31:0] num_words);
   // Student to add function implementation
   full_len = (num_words * 32) + 1 + 64; // message bits + all padding bits
   num_blocks = full_len / 512;
-  if (num_blocks % 1 != 0) begin
+  if (full_len % 512 != 0) begin
 		num_blocks = num_blocks + 1;
 		return num_blocks;
   end
@@ -107,6 +107,21 @@ function logic [31:0] rightrotate(input logic [31:0] x,
 	rightrotate = (x >> r) | (x << (32 - r));
 endfunction
 
+function logic [31:0] wordexpand(input logic [31:0] message[20 + 12],
+											input logic [31:0] w[64],
+											input logic [7:0] t, j);
+	logic [31:0] S1, S0;
+	
+	// word expansion for a single block
+	if (t < 16) begin
+		return message[t + (16*j)]; // 16*j is an offset to move to other blocks
+	end else begin
+		s0 = rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
+		s1 = rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
+		return w[t-16] + s0 + w[t-7] + s1;
+	end
+	
+endfunction
 
 // SHA-256 FSM 
 // Get a BLOCK from the memory, COMPUTE Hash output using SHA256 function
@@ -130,14 +145,14 @@ always_ff @(posedge clk, negedge reset_n) begin
 				h6 <= 32'h1f83d9ab;
 				h7 <= 32'h5be0cd19;
 
-				a <= 0;
-				b <= 0;
-				c <= 0;
-				d <= 0;
-				e <= 0;
-				f <= 0;
-				g <= 0;
-				h <= 0;
+				a <= 32'h6a09e667;
+				b <= 32'hbb67ae85;
+				c <= 32'h3c6ef372;
+				d <= 32'ha54ff53a;
+				e <= 32'h510e527f;
+				f <= 32'h9b05688c;
+				g <= 32'h1f83d9ab;
+				h <= 32'h5be0cd19;
 
 				cur_we <= 0;
 				offset <= 0;
@@ -151,7 +166,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 
 		READ1: begin
 			// get address of data
-			offset <= 32 * i;
+			offset <= i;
 			state <= READ2;
 		end
 		READ2: begin
@@ -197,13 +212,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 
 				// word expansion for a single block
 				for (int t = 0; t < 64; t++) begin
-					if (t < 16) begin
-						w[t] <= message[t + (16*j)]; // 16*j is an offset to move to other blocks
-					end else begin
-						s0 <= rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
-						s1 <= rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
-						w[t] <= w[t-16] + s0 + w[t-7] + s1;
-					end
+					w[t] <= wordexpand(message, w, t, j);
 				end
 
 				state <= COMPUTE;
