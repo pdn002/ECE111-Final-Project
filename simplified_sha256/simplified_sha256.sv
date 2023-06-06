@@ -16,7 +16,7 @@ enum logic [2:0] {IDLE, READ1, READ2, READ3, BLOCK, COMPUTE, WRITE} state;
 // Local variables
 logic [31:0] w[64];
 logic [31:0] message[20 + 12]; // only 20 words but add 12 for padding
-logic [31:0] wt;
+logic [31:0] wt; // not used
 logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
 logic [31:0] a, b, c, d, e, f, g, h;
 logic [ 7:0] i; // used as index for making case statements mimick for loop functionality
@@ -173,6 +173,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 				message[31]  = NUM_OF_WORDS * 32; //32'd640;
 
 				i <= 0;
+				offset <= 0;
 				state <= BLOCK;
 			end
 
@@ -252,9 +253,53 @@ always_ff @(posedge clk, negedge reset_n) begin
 		// h0 to h7 after compute stage has final computed hash value
 		// write back these h0 to h7 to memory starting from output_addr
 		WRITE: begin
-
-
-
+			cur_we <= 1;
+			offset <= 0;
+			if (i == 0) begin
+				cur_addr <= output_addr;
+				cur_write_data <= h0;
+				i <= i + 1;
+			end
+			else if (i == 1) begin
+				cur_addr <= output_addr + 1;
+				cur_write_data <= h1;
+				i <= i + 1;
+			end
+			else if (i == 2) begin
+				cur_addr <= output_addr + 2;
+				cur_write_data <= h2;
+				i <= i + 1;
+			end
+			else if (i == 3) begin
+				cur_addr <= output_addr + 3;
+				cur_write_data <= h3;
+				i <= i + 1;
+			end
+			else if (i == 4) begin
+				cur_addr <= output_addr + 4;
+				cur_write_data <= h4;
+				i <= i + 1;
+			end
+			else if (i == 5) begin
+				cur_addr <= output_addr + 5;
+				cur_write_data <= h5;
+				i <= i + 1;
+			end
+			else if (i == 6) begin
+				cur_addr <= output_addr + 6;
+				cur_write_data <= h6;
+				i <= i + 1;
+			end
+			else if (i == 7) begin
+				cur_addr <= output_addr + 7;
+				cur_write_data <= h7;
+				i <= i + 1;
+			end
+			else begin
+				i <= 0;
+				cur_addr <= 0;
+				state <= IDLE;
+			end
 		end
 	endcase
 end
