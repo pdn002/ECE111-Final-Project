@@ -44,7 +44,7 @@ parameter int k[0:63] = '{
 
 
 assign num_blocks = determine_num_blocks(NUM_OF_WORDS); 
-assign tstep = (i - 1); // not used
+// assign tstep = (i - 1); // not used
 
 // Note : Function defined are for reference purpose. Feel free to add more functions or modify below.
 // Function to determine number of blocks in memory to fetch
@@ -107,9 +107,8 @@ function logic [31:0] rightrotate(input logic [31:0] x,
 	rightrotate = (x >> r) | (x << (32 - r));
 endfunction
 
-function void wordexpand(input logic [31:0] message[20 + 12],
-										 input logic [7:0] j,
-										 output logic [31:0] w[64]);
+function void wordexpand(input logic [31:0] message[20 + 12], input logic [7:0] j,
+								 output logic [31:0] w[64]);
 	logic [31:0] S1, S0;
 	
 	// word expansion for a single block
@@ -122,7 +121,6 @@ function void wordexpand(input logic [31:0] message[20 + 12],
 			w[t] =  w[t-16] + s0 + w[t-7] + s1;
 		end
 	end
-	
 endfunction
 
 // SHA-256 FSM 
@@ -209,7 +207,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 		// For each of 512-bit block initiate hash value computation
 		 
 			if (j < num_blocks) begin
-				// initialize abcdefgh for compression
+				// initialize a b c d e f g h for compression
 				{a, b, c, d, e, f, g, h} <= {h0, h1, h2, h3, h4, h5, h6, h7};
 
 				// word expansion for a single block
@@ -218,7 +216,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 				state <= COMPUTE;
 			end
 
-			// processed all blocks
+			// processed all blocks so move to WRITE
 			else begin
 				state <= WRITE;
 			end
