@@ -181,8 +181,9 @@ always_ff @(posedge clk, negedge reset_n) begin
 			if (i + 1 == NUM_OF_WORDS) begin
 
 				// add padding
-				message[NUM_OF_WORDS] = 32'h80000000;
-				for (int m = NUM_OF_WORDS + 1; m < 31; m++) begin
+				message[NUM_OF_WORDS] = Nonce; //append the Nonce to the end of the message
+				message[NUM_OF_WORDS+1] = 32'h80000000; //append the required 1 AFTER the Nonce
+				for (int m = NUM_OF_WORDS + 2; m < 31; m++) begin
 					message[m] = 32'h00000000;
 				end
 				message[31]  = NUM_OF_WORDS * 32; //32'd640;
