@@ -3,7 +3,7 @@
 *.bak
 *.qws
 *.rpt
-simplified_sha256/db
-simplified_sha256/incremental_db
-simplified_sha256/output_files
-simplified_sha256/simulation
+*/db
+*/incremental_db
+*/output_files
+*/simulation
