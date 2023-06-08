@@ -190,6 +190,22 @@ always_ff @(posedge clk, negedge reset_n) begin
 				i <= 0;
 				offset <= 0;
 				state <= BLOCK;
+			end	// read in 32 bits
+			message[i] <= mem_read_data;
+
+			// have read all 20 locations so move to BLOCK case
+			if (i + 1 == NUM_OF_WORDS) begin
+
+				// add padding
+				message[NUM_OF_WORDS] = 32'h80000000;
+				for (int m = NUM_OF_WORDS + 1; m < 31; m++) begin
+					message[m] = 32'h00000000;
+				end
+				message[31]  = NUM_OF_WORDS * 32; //32'd640;
+
+				i <= 0;
+				offset <= 0;
+				state <= BLOCK;
 			end
 
 			// still need to read more memory
