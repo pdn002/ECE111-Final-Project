@@ -1,4 +1,4 @@
-module simplified_sha256 #(parameter integer NUM_OF_WORDS = 20)(
+module sha256onetwo #(parameter integer NUM_OF_WORDS = 20)(
  input logic  clk, reset_n, start,
  input logic  [15:0] message_addr, output_addr,
  output logic done, mem_clk, mem_we,
@@ -282,49 +282,49 @@ always_ff @(posedge clk, negedge reset_n) begin
 			cur_we <= 1;
 			offset <= 0;
 			if (i == 0) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 0;
 				cur_write_data <= sh0;
 				i <= i + 1;
 			end
 			else if (i == 1) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 1;
 				cur_write_data <= sh1;
 				i <= i + 1;
 			end
 			else if (i == 2) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 2;
 				cur_write_data <= sh2;
 				i <= i + 1;
 			end
 			else if (i == 3) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 3;
 				cur_write_data <= sh3;
 				i <= i + 1;
 			end
 			else if (i == 4) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 4;
 				cur_write_data <= sh4;
 				i <= i + 1;
 			end
 			else if (i == 5) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 5;
 				cur_write_data <= sh5;
 				i <= i + 1;
 			end
 			else if (i == 6) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 6;
 				cur_write_data <= sh6;
 				i <= i + 1;
 			end
 			else if (i == 7) begin
-				offset <= output_addr;
+				offset <= output_addr + (8 * nonce);
 				cur_addr <= 7;
 				cur_write_data <= sh7;
 				i <= i + 1;
@@ -337,7 +337,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 				// do other nuance values
 				if (nonce < 16) begin
 					j <= 1;
-					nuance <= nonce + 1;
+					nonce <= nonce + 1;
 					state <= BLOCK;
 				end
 				

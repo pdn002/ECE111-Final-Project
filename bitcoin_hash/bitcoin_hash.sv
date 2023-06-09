@@ -7,7 +7,6 @@ module bitcoin_hash (input logic        clk, reset_n, start,
 
 parameter num_nonces = 16;
 
-logic num_of_words[5:0] = 16;
 enum logic [2:0] {INITIAL, PHASE12, PHASE3, DONE} phase;
 logic [ 4:0] state;
 logic [31:0] hout[num_nonces];
@@ -25,13 +24,14 @@ parameter int k[64] = '{
 };
 
 
-sha256onetwo #(.NUM_OF_WORDS(num_of_words)) sha256onetwo_inst (
+sha256onetwo #(.NUM_OF_WORDS(20)) sha256onetwo_inst (
 	.clk, .reset_n, .start,
 	.message_addr, .output_addr,
 	.mem_read_data,
 	.done, .mem_clk, .mem_we, .mem_addr,
 	.mem_write_data
 );
+/*
 sha256three #(.NUM_OF_WORDS(NUM_OF_WORDS)) sha256three_inst (
 	.clk, .reset_n, .start,
 	.message_addr, .output_addr,
@@ -39,11 +39,12 @@ sha256three #(.NUM_OF_WORDS(NUM_OF_WORDS)) sha256three_inst (
 	.done, .mem_clk, .mem_we, .mem_addr,
 	.mem_write_data
 );
+*/
 
 //instantiate a number of simplified sha instances in order to calculate the correct output.
 always_ff @(posedge clk, negedge reset_n) begin
 	case(phase)
-		PHASE1: begin
+		PHASE12: begin
 			
 		end
 	endcase
