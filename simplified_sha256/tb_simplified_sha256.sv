@@ -26,8 +26,13 @@ parameter integer NUM_OF_WORDS = 20;
 parameter integer SIZE = NUM_OF_WORDS * 32; // 20 * 32bits word = 640 bits
 
 // instantiate your design
-simplified_sha256 #(.NUM_OF_WORDS(NUM_OF_WORDS)) simplified_sha256_inst 
-(clk, reset_n, start, message_addr, output_addr, done, mem_clk, mem_we, mem_addr, mem_write_data, mem_read_data);
+simplified_sha256 #(.NUM_OF_WORDS(NUM_OF_WORDS)) simplified_sha256_inst (
+	.clk, .reset_n, .start,
+	.message_addr, .output_addr,
+	.mem_read_data,
+	.done, .mem_clk, .mem_we, .mem_addr,
+	.mem_write_data
+	);
 
 // SHA256 K constants
 parameter int k[0:63] = '{
