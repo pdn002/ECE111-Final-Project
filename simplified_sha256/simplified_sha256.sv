@@ -166,7 +166,8 @@ always_ff @(posedge clk, negedge reset_n) begin
 
 		READ1: begin
 			// get address of data
-			offset <= i;
+			offset <= message_addr;
+			cur_addr <= i;
 			state <= READ2;
 		end
 		READ2: begin
@@ -174,23 +175,6 @@ always_ff @(posedge clk, negedge reset_n) begin
 			state <= READ3;
 		end
 		READ3: begin
-			// read in 32 bits
-			message[i] <= mem_read_data;
-
-			// have read all 20 locations so move to BLOCK case
-			if (i + 1 == 20) begin
-
-				// add padding
-				message[20] = 32'h80000000;
-				for (int m = 21; m < 31; m++) begin
-					message[m] = 32'h00000000;
-				end
-				message[31]  = NUM_OF_WORDS * 32; //32'd640;
-
-				i <= 0;
-				offset <= 0;
-				state <= BLOCK;
-			end	// read in 32 bits
 			message[i] <= mem_read_data;
 
 			// have read all 20 locations so move to BLOCK case
@@ -279,47 +263,56 @@ always_ff @(posedge clk, negedge reset_n) begin
 			cur_we <= 1;
 			offset <= 0;
 			if (i == 0) begin
-				cur_addr <= output_addr;
+				offset <= output_addr;
+				cur_addr <= 0;
 				cur_write_data <= h0;
 				i <= i + 1;
 			end
 			else if (i == 1) begin
-				cur_addr <= output_addr + 1;
+				offset <= output_addr;
+				cur_addr <= 1;
 				cur_write_data <= h1;
 				i <= i + 1;
 			end
 			else if (i == 2) begin
-				cur_addr <= output_addr + 2;
+				offset <= output_addr;
+				cur_addr <= 2;
 				cur_write_data <= h2;
 				i <= i + 1;
 			end
 			else if (i == 3) begin
-				cur_addr <= output_addr + 3;
+				offset <= output_addr;
+				cur_addr <= 3;
 				cur_write_data <= h3;
 				i <= i + 1;
 			end
 			else if (i == 4) begin
-				cur_addr <= output_addr + 4;
+				offset <= output_addr;
+				cur_addr <= 4;
 				cur_write_data <= h4;
 				i <= i + 1;
 			end
 			else if (i == 5) begin
-				cur_addr <= output_addr + 5;
+				offset <= output_addr;
+				cur_addr <= 5;
 				cur_write_data <= h5;
 				i <= i + 1;
 			end
 			else if (i == 6) begin
-				cur_addr <= output_addr + 6;
+				offset <= output_addr;
+				cur_addr <= 6;
 				cur_write_data <= h6;
 				i <= i + 1;
 			end
 			else if (i == 7) begin
-				cur_addr <= output_addr + 7;
+				offset <= output_addr;
+				cur_addr <= 7;
 				cur_write_data <= h7;
 				i <= i + 1;
 			end
 			else begin
 				i <= 0;
+				offset <= 0;
 				cur_addr <= 0;
 				state <= IDLE;
 			end
