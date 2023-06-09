@@ -7,42 +7,14 @@ module bitcoin_hash (input logic        clk, reset_n, start,
 
 parameter num_nonces = 16;
 
-logic done1;
-logic done2; //done for all 3 SHA 256 instances
-logic done3;
-logic we1;
-logic we2; //write enable for all three SHA 256 instances
-logic we3;
-logic [15:0] mem_addr1;
-logic [15:0] mem_addr2; // input memory adress for all three SHA 256 instances
-logic [15:0] mem_addr3;
-logic [31:0] tempMem1;
-logic [31:0] tempMem2; // output memory adress for all 3 SHA 256 instances
-logic [31:0] tempMem3;
-logic [31:0] mem_read_data1;
-logic [31:0] mem_read_data2;
-logic [31:0] mem_read_data3;
-
 
 
 
 logic num_of_words[5:0] = 16;
-enum logic [1:0] {PHASE1, PHASE2, PHASE3, DONE} phase;
+enum logic [1:0] {PHASE3, PHASE12, DONE} phase;
 logic [ 4:0] state;
-logic j [$clog2(num_of_words)+1:0] = 0 //determine the length of j [used for reading data in]
-// by first determining the number of words that we will receive as output from the hashing device
 
-//number of word cycles to be determined
-
-//number of word-cycles = input /256 * 4
-
-logic[4:0] word_cyclesP1 = 15;
-//word cycles is a constant value based on the number of words that we are reciving as an input in each cycle.
 logic [31:0] hout[num_nonces];
-//may be unecessary logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
-logic [31:0]p1h[2:0] = 0; //this is the (constant) output of the first phase
-logic start2;
-logic start3;
 
 
 parameter int k[64] = '{
@@ -56,53 +28,13 @@ parameter int k[64] = '{
     32'h748f82ee,32'h78a5636f,32'h84c87814,32'h8cc70208,32'h90befffa,32'ha4506ceb,32'hbef9a3f7,32'hc67178f2
 };
 
-//we need to repeat this process fifteen times
-//can create more SHA256 to increase efficency
-simplified_sha256 #(.NUM_OF_WORDS(16)) simplified_sha256_inst 
-(clk(clk), resset_n(reset_n), start(start), message_addr(message_addr), output_addr(output_addr), done1(done), 
-mem_clk(mem_clk), we1(mem_we), mem_addr1(mem_addr), temp_Mem1(mem_write_data), mem_read_data1(mem_read_data));
-
-
-//phase 2 will be offset by 32*15 memory adress slots
-//start 2 only becomes a high value when the first phase is done computing
-
-SHA256_PHASE2 #(.NUM_OF_WORDS(3)) simplified_sha256_inst 
-(clk(clk), reset_n(reset_n), start2(start), message_addr+512(message_addr), output_addr(output_addr), 
-done2(done), mem_clk(mem_clk), we2(mem_we), mem_addr2(mem_addr), mem_write_data, mem_read_data2(mem_read_data), 
-p1h(HValues), i(Nonce);
 
 //instantiate a number of simplified sha instances in order to calculate the correct output.
 always_ff @(posedge clk, negedge reset_n) begin
 	case(phase)
-	PHASE1:
-	mem_addr <= mem_addr1;
-	mem_read
-	if(we1) //if memory write is enabled then one data value will be read every cycle. Before this no computation can be done
-	begin
-	//we only want one read to be carried out every cycle. For loops/while loops will not be sufficient here
-		p1h[j] <= mem_write_data1;
-		j <= j + 1;
-	end
-	if(j >= word_cycles) //once all of the data has been collected (see calculation of word cycles above) mve on to phase 2
-	begin
-		j<= 0;
-		phase <= PHASE2;
-		start2 <= 1;
-	end
-	
-	PHASE2:
-	if(mem_we)
-		begin
-		
-	//we know that we have the complete hash for phase 1
-	//this will allow us to compute all of the output hashes for phase 2 relativeley easliy.
-	//we now need to feed the output values of the first round directly into the second algrothim's hash table
-	
-
-
-//we know that the first nineteen words are the same but the last word will change and cause an avalanche effect on the rest of the output
-
-//we will iterate through all of the nonces
+		PHASE12:
+	endcase
+end
 
 // Student to add rest of the code here
 
