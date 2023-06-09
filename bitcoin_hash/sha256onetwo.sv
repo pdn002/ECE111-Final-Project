@@ -17,7 +17,8 @@ enum logic [2:0] {IDLE, READ1, READ2, READ3, BLOCK, COMPUTE, WRITE} state;
 logic [31:0] w[64];
 logic [31:0] message[20 + 12]; // only 20 words but add 12 for padding
 // logic [31:0] wt; // not used
-logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
+logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7; // first block hash values
+logic [31:0] sh0, sh1, sh2, sh3, sh4, sh5, sh6, sh7; // second block hash values
 logic [31:0] a, b, c, d, e, f, g, h;
 logic [ 7:0] i; // used as index for making case statements mimick for loop functionality
 logic [ 7:0] j; // used as index for which block is being processed
@@ -29,6 +30,7 @@ logic [31:0] cur_write_data;
 // logic [512:0] memory_block; // not used
 // logic [ 7:0] tstep; // not used
 logic   [31:0] s1, s0;
+logic [4:0] nonce;
 
 // SHA256 K constants
 parameter int k[0:63] = '{
@@ -108,8 +110,12 @@ function logic [31:0] rightrotate(input logic [31:0] x,
 endfunction
 
 function void wordexpand(input logic [31:0] message[20 + 12], input logic [7:0] j,
+                         input logic [4:0] nonce,
 								 output logic [31:0] w[64]);
 	logic [31:0] S1, S0;
+	
+	// replace 20th word with nonce
+	if (j == 1) message[19] = nonce;
 	
 	// word expansion for a single block
 	for (int t = 0; t < 64; t++) begin
@@ -159,6 +165,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 				cur_addr <= 0;
 				i <= 0;
 				j <= 0;
+				nonce <= 0;
 
 				state <= READ1;
 			end
@@ -211,7 +218,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 				{a, b, c, d, e, f, g, h} <= {h0, h1, h2, h3, h4, h5, h6, h7};
 
 				// word expansion for a single block
-				wordexpand(message, j, w);
+				wordexpand(message, j, nonce, w);
 
 				state <= COMPUTE;
 			end
@@ -238,19 +245,31 @@ always_ff @(posedge clk, negedge reset_n) begin
 			end
 
 			// end of 64 processing rounds
-			else begin
-				h0 <= h0 + a;
-				h1 <= h1 + b;
-				h2 <= h2 + c;
-				h3 <= h3 + d;
-				h4 <= h4 + e;
-				h5 <= h5 + f;
-				h6 <= h6 + g;
-				h7 <= h7 + h;
+			else begin // first block hash values
+				if (j == 0) begin
+					h0 <= h0 + a;
+					h1 <= h1 + b;
+					h2 <= h2 + c;
+					h3 <= h3 + d;
+					h4 <= h4 + e;
+					h5 <= h5 + f;
+					h6 <= h6 + g;
+					h7 <= h7 + h;
+				end
+				else begin // second block has values
+					sh0 <= h0 + a;
+					sh1 <= h1 + b;
+					sh2 <= h2 + c;
+					sh3 <= h3 + d;
+					sh4 <= h4 + e;
+					sh5 <= h5 + f;
+					sh6 <= h6 + g;
+					sh7 <= h7 + h;
+				end
 
 				i <= 0;
-
-				j <= j + 1; // signifies moving to next block
+				
+				j <= j + 1; // next block
 
 				state <= BLOCK;
 			end
@@ -265,56 +284,67 @@ always_ff @(posedge clk, negedge reset_n) begin
 			if (i == 0) begin
 				offset <= output_addr;
 				cur_addr <= 0;
-				cur_write_data <= h0;
+				cur_write_data <= sh0;
 				i <= i + 1;
 			end
 			else if (i == 1) begin
 				offset <= output_addr;
 				cur_addr <= 1;
-				cur_write_data <= h1;
+				cur_write_data <= sh1;
 				i <= i + 1;
 			end
 			else if (i == 2) begin
 				offset <= output_addr;
 				cur_addr <= 2;
-				cur_write_data <= h2;
+				cur_write_data <= sh2;
 				i <= i + 1;
 			end
 			else if (i == 3) begin
 				offset <= output_addr;
 				cur_addr <= 3;
-				cur_write_data <= h3;
+				cur_write_data <= sh3;
 				i <= i + 1;
 			end
 			else if (i == 4) begin
 				offset <= output_addr;
 				cur_addr <= 4;
-				cur_write_data <= h4;
+				cur_write_data <= sh4;
 				i <= i + 1;
 			end
 			else if (i == 5) begin
 				offset <= output_addr;
 				cur_addr <= 5;
-				cur_write_data <= h5;
+				cur_write_data <= sh5;
 				i <= i + 1;
 			end
 			else if (i == 6) begin
 				offset <= output_addr;
 				cur_addr <= 6;
-				cur_write_data <= h6;
+				cur_write_data <= sh6;
 				i <= i + 1;
 			end
 			else if (i == 7) begin
 				offset <= output_addr;
 				cur_addr <= 7;
-				cur_write_data <= h7;
+				cur_write_data <= sh7;
 				i <= i + 1;
 			end
 			else begin
 				i <= 0;
 				offset <= 0;
 				cur_addr <= 0;
-				state <= IDLE;
+				
+				// do other nuance values
+				if (nonce < 16) begin
+					j <= 1;
+					nuance <= nonce + 1;
+					state <= BLOCK;
+				end
+				
+				// done all nonce values
+				else begin
+					state <= IDLE;
+				end
 			end
 		end
 	endcase
