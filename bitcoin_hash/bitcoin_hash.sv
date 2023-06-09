@@ -25,7 +25,7 @@ parameter int k[64] = '{
 };
 
 
-sha256onetwo #(.NUM_OF_WORDS(NUM_OF_WORDS)) sha256onetwo_inst (
+sha256onetwo #(.NUM_OF_WORDS(num_of_words)) sha256onetwo_inst (
 	.clk, .reset_n, .start,
 	.message_addr, .output_addr,
 	.mem_read_data,
