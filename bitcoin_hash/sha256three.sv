@@ -1,13 +1,14 @@
-module simplified_sha256 #(parameter integer NUM_OF_WORDS = 20)(
+module sha256three #(parameter integer NUM_OF_WORDS = 20)(
  input logic  clk, reset_n, start,
- input logic  [15:0] message_addr, output_addr,
+ input logic  [15:0] output_addr,
+ input logic [31:0] hin [16][8],
  output logic done, mem_clk, mem_we,
  output logic [15:0] mem_addr,
- output logic [31:0] mem_write_data,
- input logic [31:0] mem_read_data);
+ output logic [31:0] mem_write_data
+);
 
 // FSM state variables 
-enum logic [2:0] {IDLE, READ1, READ2, READ3, BLOCK, COMPUTE, WRITE} state;
+enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE} state;
 
 // NOTE : Below mentioned frame work is for reference purpose.
 // Local variables might not be complete and you might have to add more variables
@@ -15,12 +16,12 @@ enum logic [2:0] {IDLE, READ1, READ2, READ3, BLOCK, COMPUTE, WRITE} state;
 
 // Local variables
 logic [31:0] w[64];
-logic [31:0] message[20 + 12]; // only 20 words but add 12 for padding
+logic [31:0] message[16];
 // logic [31:0] wt; // not used
-logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
+logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7; // first block hash values
+logic [31:0] oh0, oh1, oh2, oh3, oh4, oh5, oh6, oh7; // will store original hash values
 logic [31:0] a, b, c, d, e, f, g, h;
 logic [ 7:0] i; // used as index for making case statements mimick for loop functionality
-logic [ 7:0] j; // used as index for which block is being processed
 logic [15:0] offset; // in word address
 logic [ 7:0] num_blocks;
 logic        cur_we;
@@ -29,6 +30,7 @@ logic [31:0] cur_write_data;
 // logic [512:0] memory_block; // not used
 // logic [ 7:0] tstep; // not used
 logic   [31:0] s1, s0;
+logic [4:0] nonce;
 
 // SHA256 K constants
 parameter int k[0:63] = '{
@@ -41,7 +43,6 @@ parameter int k[0:63] = '{
    32'h19a4c116,32'h1e376c08,32'h2748774c,32'h34b0bcb5,32'h391c0cb3,32'h4ed8aa4a,32'h5b9cca4f,32'h682e6ff3,
    32'h748f82ee,32'h78a5636f,32'h84c87814,32'h8cc70208,32'h90befffa,32'ha4506ceb,32'hbef9a3f7,32'hc67178f2
 };
-
 
 assign num_blocks = determine_num_blocks(NUM_OF_WORDS); 
 // assign tstep = (i - 1); // not used
@@ -107,14 +108,14 @@ function logic [31:0] rightrotate(input logic [31:0] x,
 	rightrotate = (x >> r) | (x << (32 - r));
 endfunction
 
-function void wordexpand(input logic [31:0] message[20 + 12], input logic [7:0] j,
+function void wordexpand(input logic [31:0] message[16],
 								 output logic [31:0] w[64]);
 	logic [31:0] S1, S0;
 	
 	// word expansion for a single block
 	for (int t = 0; t < 64; t++) begin
 		if (t < 16) begin
-			w[t] = message[t + (16*j)]; // 16*j is an offset to move to other blocks
+			w[t] = message[t];
 		end else begin
 			s0 = rightrotate(w[t-15], 7) ^ rightrotate(w[t-15], 18) ^ (w[t-15] >> 3);
 			s1 = rightrotate(w[t-2], 17) ^ rightrotate(w[t-2], 19) ^ (w[t-2] >> 10);
@@ -136,14 +137,14 @@ always_ff @(posedge clk, negedge reset_n) begin
 		IDLE: begin 
 			if(start) begin
 				// Student to add rest of the code  
-				h0 <= 32'h6a09e667;
-				h1 <= 32'hbb67ae85;
-				h2 <= 32'h3c6ef372;
-				h3 <= 32'ha54ff53a;
-				h4 <= 32'h510e527f;
-				h5 <= 32'h9b05688c;
-				h6 <= 32'h1f83d9ab;
-				h7 <= 32'h5be0cd19;
+				oh0 <= 32'h6a09e667;
+				oh1 <= 32'hbb67ae85;
+				oh2 <= 32'h3c6ef372;
+				oh3 <= 32'ha54ff53a;
+				oh4 <= 32'h510e527f;
+				oh5 <= 32'h9b05688c;
+				oh6 <= 32'h1f83d9ab;
+				oh7 <= 32'h5be0cd19;
 
 				a <= 32'h6a09e667;
 				b <= 32'hbb67ae85;
@@ -158,45 +159,30 @@ always_ff @(posedge clk, negedge reset_n) begin
 				offset <= 0;
 				cur_addr <= 0;
 				i <= 0;
-				j <= 0;
+				nonce <= 0;
 
-				state <= READ1;
+				state <= READ;
 			end
 		end
-
-		READ1: begin
-			// get address of data
-			offset <= message_addr;
-			cur_addr <= i;
-			state <= READ2;
-		end
-		READ2: begin
-			// data is available on next cycle not this one
-			state <= READ3;
-		end
-		READ3: begin
-			message[i] <= mem_read_data;
-
-			// have read all 20 locations so move to BLOCK case
-			if (i + 1 == NUM_OF_WORDS) begin
-
-				// add padding
-				message[NUM_OF_WORDS] = 32'h80000000;
-				for (int m = NUM_OF_WORDS + 1; m < 31; m++) begin
-					message[m] = 32'h00000000;
-				end
-				message[31]  = NUM_OF_WORDS * 32; //32'd640;
-
-				i <= 0;
-				offset <= 0;
-				state <= BLOCK;
-			end
-
-			// still need to read more memory
-			else begin
-				i <= i + 1;
-				state <= READ1;
-			end
+		
+		READ: begin
+			message[0] <= hin[nonce][0];
+			message[1] <= hin[nonce][1];
+			message[2] <= hin[nonce][2];
+			message[3] <= hin[nonce][3];
+			message[4] <= hin[nonce][4];
+			message[5] <= hin[nonce][5];
+			message[6] <= hin[nonce][6];
+			message[7] <= hin[nonce][7];
+			message[8] <= 32'h80000000;
+			message[9] <= 32'h00000000;
+			message[10] <= 32'h00000000;
+			message[11] <= 32'h00000000;
+			message[12] <= 32'h00000000;
+			message[13] <= 32'h00000000;
+			message[14] <= 32'h00000000;
+			message[15] <= 32'd356;
+			state <= BLOCK;
 		end
 
 		// SHA-256 FSM 
@@ -206,20 +192,13 @@ always_ff @(posedge clk, negedge reset_n) begin
 		// Fetch message in 512-bit block size
 		// For each of 512-bit block initiate hash value computation
 		 
-			if (j < num_blocks) begin
-				// initialize a b c d e f g h for compression
-				{a, b, c, d, e, f, g, h} <= {h0, h1, h2, h3, h4, h5, h6, h7};
+			// initialize a b c d e f g h for compression
+			{a, b, c, d, e, f, g, h} <= {oh0, oh1, oh2, oh3, oh4, oh5, oh6, oh7};
 
-				// word expansion for a single block
-				wordexpand(message, j, w);
+			// word expansion for a single block
+			wordexpand(message, w);
 
-				state <= COMPUTE;
-			end
-
-			// processed all blocks so move to WRITE
-			else begin
-				state <= WRITE;
-			end
+			state <= COMPUTE;
 		end
 
 		// For each block compute hash function
@@ -238,21 +217,19 @@ always_ff @(posedge clk, negedge reset_n) begin
 			end
 
 			// end of 64 processing rounds
-			else begin
-				h0 <= h0 + a;
-				h1 <= h1 + b;
-				h2 <= h2 + c;
-				h3 <= h3 + d;
-				h4 <= h4 + e;
-				h5 <= h5 + f;
-				h6 <= h6 + g;
-				h7 <= h7 + h;
+			else begin // first block hash values
+				h0 <= oh0 + a;
+				h1 <= oh1 + b;
+				h2 <= oh2 + c;
+				h3 <= oh3 + d;
+				h4 <= oh4 + e;
+				h5 <= oh5 + f;
+				h6 <= oh6 + g;
+				h7 <= oh7 + h;
 
 				i <= 0;
 
-				j <= j + 1; // signifies moving to next block
-
-				state <= BLOCK;
+				state <= WRITE;
 			end
 		end
 
@@ -263,49 +240,49 @@ always_ff @(posedge clk, negedge reset_n) begin
 			cur_we <= 1;
 			if (i == 0) begin
 				offset <= output_addr;
-				cur_addr <= 0;
+				cur_addr <= 0 + nonce * 8;
 				cur_write_data <= h0;
 				i <= i + 1;
 			end
 			else if (i == 1) begin
 				offset <= output_addr;
-				cur_addr <= 1;
+				cur_addr <= 1 + nonce * 8;
 				cur_write_data <= h1;
 				i <= i + 1;
 			end
 			else if (i == 2) begin
 				offset <= output_addr;
-				cur_addr <= 2;
+				cur_addr <= 2 + nonce * 8;
 				cur_write_data <= h2;
 				i <= i + 1;
 			end
 			else if (i == 3) begin
 				offset <= output_addr;
-				cur_addr <= 3;
+				cur_addr <= 3 + nonce * 8;
 				cur_write_data <= h3;
 				i <= i + 1;
 			end
 			else if (i == 4) begin
 				offset <= output_addr;
-				cur_addr <= 4;
+				cur_addr <= 4 + nonce * 8;
 				cur_write_data <= h4;
 				i <= i + 1;
 			end
 			else if (i == 5) begin
 				offset <= output_addr;
-				cur_addr <= 5;
+				cur_addr <= 5 + nonce * 8;
 				cur_write_data <= h5;
 				i <= i + 1;
 			end
 			else if (i == 6) begin
 				offset <= output_addr;
-				cur_addr <= 6;
+				cur_addr <= 6 + nonce * 8;
 				cur_write_data <= h6;
 				i <= i + 1;
 			end
 			else if (i == 7) begin
 				offset <= output_addr;
-				cur_addr <= 7;
+				cur_addr <= 7 + nonce * 8;
 				cur_write_data <= h7;
 				i <= i + 1;
 			end

@@ -7,10 +7,15 @@ module bitcoin_hash (input logic        clk, reset_n, start,
 
 parameter num_nonces = 16;
 
-enum logic [2:0] {INITIAL, PHASE12, PHASE3, DONE} phase;
+enum logic [2:0] {IDLE, PHASE12, PHASE3} phase;
 logic [ 4:0] state;
-logic [31:0] hout[num_nonces];
+logic start12, start3;
+logic done12, done3;
+logic mem_clk12, mem_clk3;
+logic mem_we12, mem_we3;
+logic [15:0] mem_addr12, mem_addr3;
 
+logic [31:0] hout [num_nonces][8]; // stores output after first two phases
 
 parameter int k[64] = '{
     32'h428a2f98,32'h71374491,32'hb5c0fbcf,32'he9b5dba5,32'h3956c25b,32'h59f111f1,32'h923f82a4,32'hab1c5ed5,
@@ -25,29 +30,84 @@ parameter int k[64] = '{
 
 
 sha256onetwo #(.NUM_OF_WORDS(20)) sha256onetwo_inst (
-	.clk, .reset_n, .start,
-	.message_addr, .output_addr,
+	.clk, .reset_n, .start(start12),
+	.message_addr,
+	.done(done12), .mem_clk(mem_clk12), .mem_we(mem_we12),
+	.mem_addr(mem_addr12),
+	.hout(hout),
 	.mem_read_data,
-	.done, .mem_clk, .mem_we, .mem_addr,
+);
+sha256three #(.NUM_OF_WORDS(8)) sha256three_inst (
+	.clk, .reset_n, .start(start3),
+	.output_addr,
+	.hin(hout),
+	.done(done3), .mem_clk(mem_clk3), .mem_we(mem_we3),
+	.mem_addr(mem_addr3),
 	.mem_write_data
 );
-/*
-sha256three #(.NUM_OF_WORDS(NUM_OF_WORDS)) sha256three_inst (
-	.clk, .reset_n, .start,
-	.message_addr, .output_addr,
-	.mem_read_data,
-	.done, .mem_clk, .mem_we, .mem_addr,
-	.mem_write_data
-);
-*/
 
 //instantiate a number of simplified sha instances in order to calculate the correct output.
 always_ff @(posedge clk, negedge reset_n) begin
-	case(phase)
+	if (!reset_n) begin
+		phase <= IDLE;
+	end 
+	else case(phase)
+		IDLE: begin
+			if (start) begin
+				phase <= PHASE12;
+				start12 <= 1'b0;
+				start3 <= 1'b0;
+			end
+		end
 		PHASE12: begin
-			
+			if (start12 == 1'b1) begin
+				start12 <= 1'b0; // already started so turn of start for later
+			end
+			else begin
+				start12 <= 1'b1;
+			end
+			if (done12 == 1) begin
+				phase <= PHASE3;
+			end
+			else begin
+				phase <= PHASE12;
+			end
+		end
+		PHASE3: begin
+			if (start3 == 1'b1) begin
+				start3 <= 1'b0; // already started so turn of start for later
+			end
+			else begin
+				start3 <= 1'b1;
+			end
+			if (done3 == 1) begin
+				phase <= IDLE;
+			end
+			else begin
+				phase <= PHASE3;
+			end
 		end
 	endcase
+end
+
+assign done = (phase == IDLE);
+
+always_comb begin
+	if (phase == PHASE12) begin
+		mem_clk = mem_clk12;
+		mem_we = mem_we12;
+		mem_addr = mem_addr12;
+	end
+	else if (phase == PHASE3) begin
+		mem_clk = mem_clk3;
+		mem_we = mem_we3;
+		mem_addr = mem_addr3;
+	end
+	else begin
+		mem_clk = clk;
+		mem_we = mem_we12;
+		mem_addr = mem_addr12;
+	end
 end
 
 

@@ -1,9 +1,9 @@
 module sha256onetwo #(parameter integer NUM_OF_WORDS = 20)(
  input logic  clk, reset_n, start,
- input logic  [15:0] message_addr, output_addr,
+ input logic  [15:0] message_addr,
  output logic done, mem_clk, mem_we,
  output logic [15:0] mem_addr,
- output logic [31:0] mem_write_data,
+ output logic [31:0] hout [16][8],
  input logic [31:0] mem_read_data);
 
 // FSM state variables 
@@ -279,54 +279,37 @@ always_ff @(posedge clk, negedge reset_n) begin
 		// h0 to h7 after compute stage has final computed hash value
 		// write back these h0 to h7 to memory starting from output_addr
 		WRITE: begin
-			cur_we <= 1;
 			offset <= 0;
 			if (i == 0) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 0;
-				cur_write_data <= sh0;
+				hout[nonce][0] <= sh0;
 				i <= i + 1;
 			end
 			else if (i == 1) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 1;
-				cur_write_data <= sh1;
+				hout[nonce][1] <= sh1;
 				i <= i + 1;
 			end
 			else if (i == 2) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 2;
-				cur_write_data <= sh2;
+				hout[nonce][2] <= sh2;
 				i <= i + 1;
 			end
 			else if (i == 3) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 3;
-				cur_write_data <= sh3;
+				hout[nonce][3] <= sh3;
 				i <= i + 1;
 			end
 			else if (i == 4) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 4;
-				cur_write_data <= sh4;
+				hout[nonce][4] <= sh4;
 				i <= i + 1;
 			end
 			else if (i == 5) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 5;
-				cur_write_data <= sh5;
+				hout[nonce][5] <= sh5;
 				i <= i + 1;
 			end
 			else if (i == 6) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 6;
-				cur_write_data <= sh6;
+				hout[nonce][6] <= sh6;
 				i <= i + 1;
 			end
 			else if (i == 7) begin
-				offset <= output_addr + (8 * nonce);
-				cur_addr <= 7;
-				cur_write_data <= sh7;
+				hout[nonce][7] <= sh7;
 				i <= i + 1;
 			end
 			else begin
