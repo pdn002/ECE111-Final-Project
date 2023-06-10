@@ -292,8 +292,8 @@ begin
 			state <= IDLE;	
 		end
 	end
-   endcase
-  end
+ endcase
+end
 
 // Generate done when SHA256 hash computation has finished and moved to IDLE state
 assign done = (state == IDLE);
