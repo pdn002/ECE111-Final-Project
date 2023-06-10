@@ -189,7 +189,7 @@ begin
 			j <= j + 1;
 			state <= COMPUTE;
 		end
-		if !(j == num_blocks) begin
+		if (!(j == num_blocks)) begin
 			if (j + 1 == num_blocks ) begin // Start of 2nd message block
 				for (int m = 0; m < 4; m ++) begin // 640 minus 512 (from first block) is 128. 128 bits = 4 words
 					w[m] = message[16 + m];  // insert last remaining word from message into 2nd block
