@@ -290,7 +290,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 				i <= 0;
 				offset <= 0;
 				cur_addr <= 0;
-				if (nonce < 16) begin
+				if (nonce < 15) begin
 					nonce <= nonce + 1;
 					state <= READ;
 				end
