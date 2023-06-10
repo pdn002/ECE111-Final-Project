@@ -240,49 +240,49 @@ always_ff @(posedge clk, negedge reset_n) begin
 			cur_we <= 1;
 			if (i == 0) begin
 				offset <= output_addr;
-				cur_addr <= 0 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h0;
 				i <= i + 1;
 			end
 			else if (i == 1) begin
 				offset <= output_addr;
-				cur_addr <= 1 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h1;
 				i <= i + 1;
 			end
 			else if (i == 2) begin
 				offset <= output_addr;
-				cur_addr <= 2 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h2;
 				i <= i + 1;
 			end
 			else if (i == 3) begin
 				offset <= output_addr;
-				cur_addr <= 3 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h3;
 				i <= i + 1;
 			end
 			else if (i == 4) begin
 				offset <= output_addr;
-				cur_addr <= 4 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h4;
 				i <= i + 1;
 			end
 			else if (i == 5) begin
 				offset <= output_addr;
-				cur_addr <= 5 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h5;
 				i <= i + 1;
 			end
 			else if (i == 6) begin
 				offset <= output_addr;
-				cur_addr <= 6 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h6;
 				i <= i + 1;
 			end
 			else if (i == 7) begin
 				offset <= output_addr;
-				cur_addr <= 7 + nonce * 8;
+				cur_addr <= nonce + i * 16;
 				cur_write_data <= h7;
 				i <= i + 1;
 			end
