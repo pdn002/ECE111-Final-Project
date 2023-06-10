@@ -181,7 +181,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 			message[12] <= 32'h00000000;
 			message[13] <= 32'h00000000;
 			message[14] <= 32'h00000000;
-			message[15] <= 32'd356;
+			message[15] <= 32'd256;
 			state <= BLOCK;
 		end
 
@@ -290,7 +290,14 @@ always_ff @(posedge clk, negedge reset_n) begin
 				i <= 0;
 				offset <= 0;
 				cur_addr <= 0;
-				state <= IDLE;
+				if (nonce < 16) begin
+					nonce <= nonce + 1;
+					state <= READ;
+				end
+				else begin
+					nonce <= 0;
+					state <= IDLE;
+				end
 			end
 		end
 	endcase

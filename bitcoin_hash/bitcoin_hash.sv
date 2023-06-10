@@ -8,12 +8,12 @@ module bitcoin_hash (input logic        clk, reset_n, start,
 parameter num_nonces = 16;
 
 enum logic [2:0] {IDLE, PHASE12, PHASE3} phase;
-logic [ 4:0] state;
 logic start12, start3;
 logic done12, done3;
 logic mem_clk12, mem_clk3;
 logic mem_we12, mem_we3;
 logic [15:0] mem_addr12, mem_addr3;
+logic [ 10:0] i; // track number of cycles
 
 logic [31:0] hout [num_nonces][8]; // stores output after first two phases
 
@@ -35,7 +35,7 @@ sha256onetwo #(.NUM_OF_WORDS(20)) sha256onetwo_inst (
 	.done(done12), .mem_clk(mem_clk12), .mem_we(mem_we12),
 	.mem_addr(mem_addr12),
 	.hout(hout),
-	.mem_read_data,
+	.mem_read_data
 );
 sha256three #(.NUM_OF_WORDS(8)) sha256three_inst (
 	.clk, .reset_n, .start(start3),
@@ -57,33 +57,40 @@ always_ff @(posedge clk, negedge reset_n) begin
 				phase <= PHASE12;
 				start12 <= 1'b0;
 				start3 <= 1'b0;
+				i <= 0;
 			end
 		end
 		PHASE12: begin
-			if (start12 == 1'b1) begin
-				start12 <= 1'b0; // already started so turn of start for later
-			end
-			else begin
+			if (i == 0) begin
 				start12 <= 1'b1;
 			end
-			if (done12 == 1) begin
+			else if (i > 2) begin
+				start12 <= 1'b0;
+			end
+			
+			if (done12 == 1 && i > 2) begin
+				i <= 0;
 				phase <= PHASE3;
 			end
 			else begin
+				i <= i + 1;
 				phase <= PHASE12;
 			end
 		end
 		PHASE3: begin
-			if (start3 == 1'b1) begin
-				start3 <= 1'b0; // already started so turn of start for later
-			end
-			else begin
+			if (i == 0) begin
 				start3 <= 1'b1;
 			end
-			if (done3 == 1) begin
+			else if (i > 2) begin
+				start3 <= 1'b0;
+			end
+			
+			if (done3 == 1 && i > 2) begin
+				i <= 0;
 				phase <= IDLE;
 			end
 			else begin
+				i <= i + 1;
 				phase <= PHASE3;
 			end
 		end
