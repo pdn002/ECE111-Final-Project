@@ -6,50 +6,49 @@ module bitcoin_hash (input logic        clk, reset_n, start,
                      input logic [31:0] mem_read_data);
 
 parameter num_nonces = 16;
-
-logic done1;
-logic done2; //done for all 3 SHA 256 instances
-logic done3;
-logic we1;
-logic started_1 = 0;
-logic[3:0] i = 0;
+logic done1 = 0;
+logic done2 = 0; //done for all 3 SHA 256 instances
+//logic done3 = 0;
+logic we1 = 0;
+//logic started_1 = 0;
+int i = 0;
 //logic [2:0] j = 0;
-logic [2:0] e = 0;
+int  e = 0;
 logic we2; //write enable for all three SHA 256 instances
 logic we3;
 logic [15:0] mem_addr1;
 logic [15:0] mem_addr2; // input memory adress for all three SHA 256 instances
 logic [15:0] mem_addr3;
-logic [31:0] tempMem1;
-logic [31:0] tempMem2; // output memory adress for all 3 SHA 256 instances
+logic [31:0]tempMem1;
+logic [31:0] tempMem2 = 0; // output memory adress for all 3 SHA 256 instances
 logic [31:0] tempMem3;
 logic [31:0] mem_read_data1;
 logic [31:0] mem_read_data2;
 logic [31:0] mem_read_data3;
-logic [3:0] wordsout = 8;
+//logic [3:0] wordsout = 8;
 logic reset_n_temp1 = 1;
 logic reset_n_temp2 = 1;
-logic [5:0]num_of_words = 16;
+//logic [5:0]num_of_words = 16;
 enum logic [2:0] {IDLE, PHASE1, PHASE2, PHASE3, PHASE4, PHASE5} phase;
-logic [ 4:0] state;
-logic [2:0]j  = 0; //determine the length of j [used for reading data in]
+//logic [ 4:0] state;
+int j  = 0; //determine the length of j [used for reading data in]
 // by first determining the number of words that we will receive as output from the hashing device
 
 //number of word cycles to be determined
 
 //number of word-cycles = input /256 * 4
-logic[4:0] word_cyclesP1 = 8;
+//logic[4:0] word_cyclesP1 = 8;
 //word cycles is a constant value based on the number of words that we are reciving as an input in each cycle.
 logic [31:0] hout[num_nonces];
 //may be unecessary logic [31:0] h0, h1, h2, h3, h4, h5, h6, h7;
-logic [2:0]p1h[31:0]; //this is the (constant) output of the first phase
-logic [2:0]p2h[31:0]; //this is the temporary output of the second phase used to compute the output of the third phase
-logic [3:0]message2[31:0] ;
+logic [31:0]p1h[7:0]; //this is the (constant) output of the first phase
+logic [31:0]p2h[7:0]; //this is the temporary output of the second phase used to compute the output of the third phase
+logic [31:0]message2[16:0];
 logic [31:0] outvals[2:0][3:0];//first the i value, then the j value for output //this will take a huge number of registers.
 logic start1;
 logic start2;
 logic start3;
-logic [15:0] throwAway1, throwAway2;
+logic throwAway1, throwAway2;
 
 
 parameter int k[64] = '{
@@ -67,7 +66,7 @@ parameter int k[64] = '{
 //can create more SHA256 to increase efficency
 simplified_sha256 #(.NUM_OF_WORDS(16)) simplified_sha256_inst
 (.clk(clk), .reset_n(reset_n_temp1), .start(start1), .message_addr(message_addr), .output_addr(output_addr), .done(done1), 
-.mem_clk(mem_clk), .mem_we(we1), .mem_addr(mem_addr1), .mem_write_data(temp_Mem1), .mem_read_data(mem_read_data1));
+.mem_clk(throwAway2), .mem_we(we1), .mem_addr(mem_addr1), .mem_write_data1(tempMem1), .mem_read_data(mem_read_data1));
 
 
 //phase 2 will be offset by 32*15 memory adress slots
@@ -75,7 +74,7 @@ simplified_sha256 #(.NUM_OF_WORDS(16)) simplified_sha256_inst
 
 SHA256_PHASE2 #(.NUM_OF_WORDS(3)) SHA2 
 (.clk(clk), .reset_n(reset_n_temp2), .start(start2), .message_addr(message_addr), .output_addr(output_addr), 
-.done(done2), .mem_clk(throwAway1), .mem_we(we2), .mem_addr(mem_addr2), .mem_write_data(temp_Mem2), .mem_read_data(mem_read_data2), 
+.done(done2), .mem_clk(throwAway1), .mem_we(we2), .mem_addr(mem_addr2), .mem_write_data(tempMem2), .mem_read_data(mem_read_data2), 
 .hvalues(p1h), .Nonce(i));
 //only two instances should be required
 //simplified_sha256 #(.NUM_OF_WORDS(8)) SHA3 
@@ -97,7 +96,6 @@ always_ff @(posedge clk, negedge reset_n) begin
 		
 		phase <= IDLE;
 	end 
-	
 	else
 	case(phase)
 	IDLE:
@@ -105,21 +103,23 @@ always_ff @(posedge clk, negedge reset_n) begin
 	e <=0;
 	i <= 0;
 	mem_write_data <= 0;
-	reset_n_temp2 = 1;
-	start1 <= start;
+	reset_n_temp1 <= 0;
+	reset_n_temp2 <= 1;
+	start1 <= start; //should start phase 1 a cycle early
 	j <= 0;
 	if(start)
 	begin
 	phase <= PHASE1;
 	mem_read_data1 <= mem_read_data;
 	mem_addr <= mem_addr1;
+	reset_n_temp1 <= 1;
 	end
 	end //end of IDLE 
+	
 	
 	PHASE1:
 	begin
 	mem_write_data <= 0;
-	
 	e <=0;
 	i <=0;
 	start1 <= start;
@@ -130,14 +130,10 @@ always_ff @(posedge clk, negedge reset_n) begin
 	//we only want one read to be carried out every cycle. For loops/while loops will not be sufficient here
 		p1h[j] <= tempMem1;
 		j <= j + 1;
+		
 	end
-	else
+	if(done1 & we1) //once all of the data has been collected (see calculation of word cycles above) mve on to phase 2
 	begin
-		j <= 0;
-	end
-	if(done1) //once all of the data has been collected (see calculation of word cycles above) mve on to phase 2
-	begin
-		j<= 0;
 		phase <= PHASE2;
 		start2 <= 1;
 	end
@@ -148,11 +144,10 @@ always_ff @(posedge clk, negedge reset_n) begin
 	mem_write_data <= 0;
 
 	e <=0;
-	i <=0;
 	//first we will trys the serial implementation
 	mem_addr <= mem_addr2;
 	mem_read_data2 <=mem_read_data;
-	reset_n_temp <= 0; 
+	reset_n_temp1 <= 0; 
 	if(we2)
 		begin
 		message2[j] <= tempMem2;
@@ -162,17 +157,18 @@ always_ff @(posedge clk, negedge reset_n) begin
 	begin
 		j <=0;
 	end
-	if(done2) //this should be 7 at the time of execution
+	if(done2 & we2) //this should be 7 at the time of execution
 		begin
 			for (int m = 3; m < 15; m++) 
 			begin
 					message2[m] = 32'h00000000; //first append the required zeros to feed the SHA 2 output 
 					//back into the first SHA (this would be done internally by the SHA algorithm anyways
 			end
+			
 			j <= 0;
 			phase <= PHASE3;
-			mem_read_data1 <= message2[j];
-			reset_n_temp <= 1;
+			mem_read_data1 <= message2[0];
+			reset_n_temp1 <= 1;
 			
 			
 		end
@@ -182,20 +178,19 @@ always_ff @(posedge clk, negedge reset_n) begin
 		mem_write_data <= 0;
 
 		e <=0;
-		i <=0;
 		start1 <= 1;
 		phase <= PHASE4;
 		j <= mem_addr1;
 		mem_read_data1 <= message2[j];
 		reset_n_temp2 <= 0;
+		
+
 	end //end of PHASE3
 	PHASE4:
 	begin
 		mem_write_data <= 0;
-
 		j<= mem_addr1;
 		e <=0;
-		i <=0;
 		mem_read_data1<= message2[j];
 		start1 <= 0;
 		reset_n_temp2 <= 1;
@@ -213,6 +208,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 		if(i == num_nonces-1)
 		begin
 			phase <= PHASE5;
+			
 			i <= 0;
 			e <=0;
 		end
@@ -221,19 +217,18 @@ always_ff @(posedge clk, negedge reset_n) begin
 	begin
 	
 	j <=0;
+	
 	mem_write_data <= outvals[e][i];
 	e <= e + 1;
-	
-	if(e >= wordsout-1) //when e = 7
+	if(e >= 7) //when e = 7
 	begin
 		e <=0; //set e to be 0 on the next cycle
 		i <= i + 1;
 	end
-	if( i == num_nonces -1 & e == wordsout-1)
+	if( i == 15 & e == 7)
 	begin
 		i <= 0;
 		e <=0;
-
 		phase <= IDLE;
 	end
 		
@@ -241,11 +236,14 @@ always_ff @(posedge clk, negedge reset_n) begin
 	default:
 	begin
 	j <= 0;
-	e <=0;
+	e <= 0;
 	i <= 0;
+	
 	end
 	endcase
 end
 assign done = (phase == IDLE);
 assign mem_we = (phase == PHASE5);
+assign mem_clk = clk;
+
 endmodule
