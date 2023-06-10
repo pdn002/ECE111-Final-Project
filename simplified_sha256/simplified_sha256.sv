@@ -268,7 +268,6 @@ begin
 			state <= BLOCK;
 		end
 	end
-
     // h0 to h7 each are 32 bit hashes, which makes up total 256 bit value
     // h0 to h7 after compute stage has final computed hash value
     // write back these h0 to h7 to memory starting from output_addr
@@ -293,8 +292,8 @@ begin
 			state <= IDLE;	
 		end
 	end
-   endcase
-  end
+ endcase
+end
 
 // Generate done when SHA256 hash computation has finished and moved to IDLE state
 assign done = (state == IDLE);
