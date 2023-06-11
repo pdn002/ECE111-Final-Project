@@ -7,7 +7,7 @@ module bitcoin_hash (input logic        clk, reset_n, start,
 
 parameter num_nonces = 16;
 
-enum logic [2:0] {IDLE, PHASE1, PHASE2, PHASE3} state;
+enum logic [4:0] {IDLE, READ, state1, state2, state3} state;
 logic start1, start2, start3;
 logic done1, done2, done3;
 logic mem_clk1, mem_clk2, mem_clk3;
@@ -16,7 +16,13 @@ logic [15:0] mem_addr1, mem_addr2,	 mem_addr3;
 logic [ 10:0] i; // track number of cycles
 logic [31:0] h0_in_p1, h1_in_p1, h2_in_p1, h3_in_p1, h4_in_p1, h5_in_p1, h6_in_p1, h7_in_p1;
 logic [31:0] h0_out_p1, h1_out_p1, h2_out_p1, h3_out_p1, h4_out_p1, h5_out_p1, h6_out_p1, h7_out_p1;
-logic [31:0] hout [num_nonces][8]; // stores output after first two phases
+logic [31:0] hout [num_nonces][8]; // stores output after first two states
+logic        cur_we;
+logic [15:0] cur_addr;
+logic [31:0] cur_write_data;
+logic [15:0] offset;
+logic [31:0] message[20];
+logic[32:0] w1,w2,w3,w4;
 
 parameter int k[64] = '{
     32'h428a2f98,32'h71374491,32'hb5c0fbcf,32'he9b5dba5,32'h3956c25b,32'h59f111f1,32'h923f82a4,32'hab1c5ed5,
@@ -30,31 +36,22 @@ parameter int k[64] = '{
 };
 
 
-sha256three #(.NUM_OF_WORDS(8)) sha256three_inst (
-	.clk, .reset_n, .start(start3),
-	.output_addr,
-	.hin(hout),
-	.done(done3), .mem_clk(mem_clk3), .mem_we(mem_we3),
-	.mem_addr(mem_addr3),
-	.mem_write_data
-);
-
 //instantiate a number of simplified sha instances in order to calculate the correct output.
 always_ff @(posedge clk, negedge reset_n) begin
 	if (!reset_n) begin
-		phase <= IDLE;
+		state <= IDLE;
 	end 
-	else case(phase)
+	else case(state)
 		IDLE: begin
 			if(start) begin
-				h0_p1 <= 32'h6a09e667; 
-				h1_p1 <= 32'hbb67ae85; 
-				h2_p1 <= 32'h3c6ef372; 
-				h3_p1 <= 32'ha54ff53a;
-				h4_p1 <= 32'h510e527f; 
-				h5_p1 <= 32'h9b05688c; 
-				h6_p1 <= 32'h1f83d9ab; 
-				h7_p1 <= 32'h5be0cd19;
+				h0_in_p1 <= 32'h6a09e667; 
+				h1_in_p1 <= 32'hbb67ae85; 
+				h2_in_p1 <= 32'h3c6ef372; 
+				h3_in_p1 <= 32'ha54ff53a;
+				h4_in_p1 <= 32'h510e527f; 
+				h5_in_p1 <= 32'h9b05688c; 
+				h6_in_p1 <= 32'h1f83d9ab; 
+				h7_in_p1 <= 32'h5be0cd19;
 						
 				offset <= 0;
 				cur_addr <= message_addr;
@@ -85,11 +82,11 @@ always_ff @(posedge clk, negedge reset_n) begin
 			end	
 			else begin
 				offset <= 16'b0;
-				state <= PHASE1;
+				state <= state1;
 			end
 		end
 
-		PHASE1: begin
+		state1: begin
 			start1 <= 1;
 			if(done1) begin
 				start1 <= 0;
@@ -97,29 +94,29 @@ always_ff @(posedge clk, negedge reset_n) begin
 				w2 <= message[17];
 				w3 <= message[18];
 				w4 <= message[19];
-				state <= PHASE2;
+				state <= state2;
 			end
 			else begin
-				state <= PHASE1;
+				state <= state1;
 			end
 		end
 		endcase
 end
 
-assign done = (phase == IDLE);
+assign done = (state == IDLE);
 
 always_comb begin
-	if (phase == PHASE1) begin
+	if (state == state1) begin
 		mem_clk = mem_clk1;
 		mem_we = mem_we1;
 		mem_addr = mem_addr1;
 	end
-	else if (phase == PHASE2) begin
+	else if (state == state2) begin
 		mem_clk = mem_clk2;
 		mem_we = mem_we2;
 		mem_addr = mem_addr2;
 	end
-	else if (phase == PHASE3) begin
+	else if (state == state3) begin
 		mem_clk = mem_clk3;
 		mem_we = mem_we3;
 		mem_addr = mem_addr3;
@@ -131,7 +128,7 @@ always_comb begin
 	end
 end
 
-sha256_one #(.NUM_OF_WORDS(20)) sha256_p1(
+sha256one #(.NUM_OF_WORDS(20)) sha256_p1(
 .clk,
 .reset_n,
 .sha_start(start1),
