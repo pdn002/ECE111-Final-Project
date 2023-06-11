@@ -7,7 +7,7 @@ module bitcoin_hash (input logic        clk, reset_n, start,
 
 parameter num_nonces = 16;
 
-enum logic [4:0] {IDLE, READ, state1, state2, state3} state;
+enum logic [4:0] {IDLE, READ, state1, state1buf, state2, state2buf, state3} state;
 logic start1, start2, start3;
 logic done1, done2, done3;
 logic mem_clk1, mem_clk2, mem_clk3;
@@ -17,12 +17,12 @@ logic [ 10:0] i; // track number of cycles
 logic [31:0] h0_in_p1, h1_in_p1, h2_in_p1, h3_in_p1, h4_in_p1, h5_in_p1, h6_in_p1, h7_in_p1;
 logic [31:0] h0_out_p1, h1_out_p1, h2_out_p1, h3_out_p1, h4_out_p1, h5_out_p1, h6_out_p1, h7_out_p1;
 logic [31:0] hout [num_nonces][8]; // stores output after first two states
-logic        cur_we;
 logic [15:0] cur_addr;
+logic        cur_we;
 logic [31:0] cur_write_data;
 logic [15:0] offset;
 logic [31:0] message[20];
-logic[32:0] w1,w2,w3,w4;
+logic[32:0] w0,w1,w2,w3;
 
 parameter int k[64] = '{
     32'h428a2f98,32'h71374491,32'hb5c0fbcf,32'he9b5dba5,32'h3956c25b,32'h59f111f1,32'h923f82a4,32'hab1c5ed5,
@@ -74,7 +74,7 @@ always_ff @(posedge clk, negedge reset_n) begin
 					state <= READ;
 				end
 				else begin
-					message[offset-1] = mem_read_data;
+					message[offset-1] <= mem_read_data;
 					offset <= offset + 1;
 					cur_we <= 1'b0;
 					state <= READ;
@@ -90,14 +90,40 @@ always_ff @(posedge clk, negedge reset_n) begin
 			start1 <= 1;
 			if(done1) begin
 				start1 <= 0;
-				w1 <= message[16];
-				w2 <= message[17];
-				w3 <= message[18];
-				w4 <= message[19];
-				state <= state2;
+				w0 <= message[16];
+				w1 <= message[17];
+				w2 <= message[18];
+				w3<= message[19];
+				state <= state1buf;
 			end
 			else begin
 				state <= state1;
+			end
+		end
+		state1buf: begin
+			state <= state2;
+		end
+		state2: begin
+			start2 <= 1;
+			if(done2) begin
+				start2 <= 0;
+				state <= state2buf;
+			end
+			else begin
+				state <= state2;
+			end
+		end
+		state2buf: begin
+			state <= state3;
+		end
+		state3: begin
+			start3 <= 1;
+			if (done3) begin
+				start3 <= 0;
+				state <= IDLE;
+			end
+			else begin
+				state <= state3;
 			end
 		end
 		endcase
@@ -106,10 +132,15 @@ end
 assign done = (state == IDLE);
 
 always_comb begin
+	if (state == READ) begin
+		mem_clk = clk;
+		mem_we = cur_we;
+		mem_addr = offset;
+	end
 	if (state == state1) begin
 		mem_clk = mem_clk1;
-		mem_we = mem_we1;
-		mem_addr = mem_addr1;
+		mem_we = cur_we;
+		mem_addr = offset;
 	end
 	else if (state == state2) begin
 		mem_clk = mem_clk2;
@@ -164,7 +195,26 @@ sha256one #(.NUM_OF_WORDS(20)) sha256_p1(
 .h4_out(h4_out_p1),
 .h5_out(h5_out_p1),
 .h6_out(h6_out_p1),
-.h7_out(h7_out_p1)
+.h7_out(h7_out_p1),
+.mem_clk(mem_clk1)
+);
+
+sha256two #(.NUM_OF_WORDS(4))sha256two_inst(
+ .clk, .reset_n, .start(start2),
+ .h0(h0_out_p1), .h1(h1_out_p1), .h2(h2_out_p1), .h3(h3_out_p1),
+ .h4(h4_out_p1), .h5(h5_out_p1), .h6(h6_out_p1), .h7(h7_out_p1),
+ .w0, .w1, .w2, .w3,
+ .done(done2), .mem_clk(mem_clk2),
+ .hout(hout)
+);
+
+sha256three #(.NUM_OF_WORDS(8)) sha256three_inst(
+ .clk, .reset_n, .start(start3),
+ .output_addr,
+ .hin(hout),
+ .done(done3), .mem_clk(mem_clk3), .mem_we(mem_we3),
+ .mem_addr(mem_addr3),
+ .mem_write_data
 );
 
 endmodule

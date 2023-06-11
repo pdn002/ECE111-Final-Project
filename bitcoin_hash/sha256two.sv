@@ -3,12 +3,11 @@ module sha256two #(parameter integer NUM_OF_WORDS = 4)(
  input logic  [31:0] h0, h1, h2, h3, h4, h5, h6, h7,
  input logic [32:0] w0, w1, w2, w3,
  output logic done, mem_clk,
- output logic [31:0] mem_write_data,
  output logic [31:0] hout [16][8]
 );
 
 // FSM state variables 
-enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE} state;
+enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE, DONE} state;
 
 // NOTE : Below mentioned frame work is for reference purpose.
 // Local variables might not be complete and you might have to add more variables
@@ -137,10 +136,7 @@ begin
 			i <= 1; //loop starts at 1 for i because of optimization of 16bit compute (w[15] becomes new chunk)
 			n <= 0; // n used as on/off switch
 			offset <= 0;
-			nonce <= 0;
-			cur_addr <= message_addr;  //current address = where message is located in the memory (input port message_addr)
-			cur_we <= 1'b0;				
-			cur_write_data <= 0;
+			nonce <= 0;	
 			state <= READ;
        end
     end
@@ -180,9 +176,6 @@ begin
 		h <= h7;
 
 		state <= COMPUTE;			
-		end
-	
-		end 
 	end
 		
 
@@ -259,14 +252,17 @@ begin
 				state <= BLOCK;
 			end
 			else begin
-				state <= IDLE;
+				state <= DONE;
 			end
+		end
+		DONE: begin
+		
 		end
 	end
  endcase
 end
 
 // Generate done when SHA256 hash computation has finished and moved to IDLE state
-assign done = (state == IDLE);
+assign done = (state == DONE);
 
 endmodule

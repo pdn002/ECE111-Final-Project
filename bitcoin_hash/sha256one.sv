@@ -2,7 +2,7 @@ module sha256one #(parameter integer NUM_OF_WORDS = 20)(
  input logic  clk, reset_n, sha_start,
  input logic[31:0] input_message1, input_message2, input_message3, input_message4, input_message5, input_message6, input_message7, input_message8, input_message9, input_message10, input_message11, input_message12, input_message13, input_message14, input_message15, input_message16,
  input logic[31:0] h0_in, h1_in, h2_in, h3_in, h4_in, h5_in, h6_in, h7_in,
- output logic sha_done,
+ output logic sha_done, mem_clk,
  output logic[31:0] h0_out, h1_out, h2_out, h3_out, h4_out, h5_out, h6_out, h7_out
 );
 
@@ -35,6 +35,7 @@ parameter int k[0:63] = '{
 
 
 assign num_blocks = determine_num_blocks(NUM_OF_WORDS);
+assign mem_clk = clk;
 
 // Note : Function defined are for reference purpose. Feel free to add more functions or modify below.
 // Function to determine number of blocks in memory to fetch

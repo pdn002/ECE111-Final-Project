@@ -8,7 +8,7 @@ module sha256three #(parameter integer NUM_OF_WORDS = 20)(
 );
 
 // FSM state variables 
-enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE} state;
+enum logic [2:0] {IDLE, READ, BLOCK, COMPUTE, WRITE, DONE} state;
 
 // NOTE : Below mentioned frame work is for reference purpose.
 // Local variables might not be complete and you might have to add more variables
@@ -296,14 +296,17 @@ always_ff @(posedge clk, negedge reset_n) begin
 				end
 				else begin
 					nonce <= 0;
-					state <= IDLE;
+					state <= DONE;
 				end
 			end
+		end
+		DONE: begin
+		
 		end
 	endcase
 end
 
 // Generate done when SHA256 hash computation has finished and moved to IDLE state
-assign done = (state == IDLE);
+assign done = (state == DONE);
 
 endmodule
