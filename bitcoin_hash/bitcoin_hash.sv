@@ -156,7 +156,7 @@ sha256one #(.NUM_OF_WORDS(20)) sha256_p1(
 .h5_in(h5_in_p1),
 .h6_in(h6_in_p1),
 .h7_in(h7_in_p1),
-.sha_done(sha_done_p1),
+.sha_done(done1),
 .h0_out(h0_out_p1),
 .h1_out(h1_out_p1),
 .h2_out(h2_out_p1),
