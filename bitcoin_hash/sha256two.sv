@@ -255,9 +255,9 @@ begin
 				state <= DONE;
 			end
 		end
-		DONE: begin
-		
-		end
+	end
+	DONE: begin
+	
 	end
  endcase
 end
