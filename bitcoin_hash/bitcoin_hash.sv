@@ -7,8 +7,16 @@ module bitcoin_hash (input logic        clk, reset_n, start,
 
 parameter num_nonces = 16;
 
-logic [ 4:0] state;
-logic [31:0] hout[num_nonces];
+enum logic [2:0] {IDLE, PHASE1, PHASE2, PHASE3} state;
+logic start1, start2, start3;
+logic done1, done2, done3;
+logic mem_clk1, mem_clk2, mem_clk3;
+logic mem_we1, mem_we2, mem_we3;
+logic [15:0] mem_addr1, mem_addr2,	 mem_addr3;
+logic [ 10:0] i; // track number of cycles
+logic [31:0] h0_in_p1, h1_in_p1, h2_in_p1, h3_in_p1, h4_in_p1, h5_in_p1, h6_in_p1, h7_in_p1;
+logic [31:0] h0_out_p1, h1_out_p1, h2_out_p1, h3_out_p1, h4_out_p1, h5_out_p1, h6_out_p1, h7_out_p1;
+logic [31:0] hout [num_nonces][8]; // stores output after first two phases
 
 parameter int k[64] = '{
     32'h428a2f98,32'h71374491,32'hb5c0fbcf,32'he9b5dba5,32'h3956c25b,32'h59f111f1,32'h923f82a4,32'hab1c5ed5,
@@ -21,11 +29,145 @@ parameter int k[64] = '{
     32'h748f82ee,32'h78a5636f,32'h84c87814,32'h8cc70208,32'h90befffa,32'ha4506ceb,32'hbef9a3f7,32'hc67178f2
 };
 
-// Student to add rest of the code here
 
+sha256three #(.NUM_OF_WORDS(8)) sha256three_inst (
+	.clk, .reset_n, .start(start3),
+	.output_addr,
+	.hin(hout),
+	.done(done3), .mem_clk(mem_clk3), .mem_we(mem_we3),
+	.mem_addr(mem_addr3),
+	.mem_write_data
+);
 
+//instantiate a number of simplified sha instances in order to calculate the correct output.
+always_ff @(posedge clk, negedge reset_n) begin
+	if (!reset_n) begin
+		phase <= IDLE;
+	end 
+	else case(phase)
+		IDLE: begin
+			if(start) begin
+				h0_p1 <= 32'h6a09e667; 
+				h1_p1 <= 32'hbb67ae85; 
+				h2_p1 <= 32'h3c6ef372; 
+				h3_p1 <= 32'ha54ff53a;
+				h4_p1 <= 32'h510e527f; 
+				h5_p1 <= 32'h9b05688c; 
+				h6_p1 <= 32'h1f83d9ab; 
+				h7_p1 <= 32'h5be0cd19;
+						
+				offset <= 0;
+				cur_addr <= message_addr;
+				cur_we <= 1'b0;
+				cur_write_data <= 0;
+				start1 <= 0;
+				start2 <= 0;
+				start3 <= 0;
+				state <= READ;
+			end
+			else begin
+				state <= IDLE;
+			end
+		end
+		READ: begin
+			if(offset < 21) begin
+				if(offset == 0) begin
+					offset <= offset + 1;
+					cur_we <= 1'b0;
+					state <= READ;
+				end
+				else begin
+					message[offset-1] = mem_read_data;
+					offset <= offset + 1;
+					cur_we <= 1'b0;
+					state <= READ;
+				end
+			end	
+			else begin
+				offset <= 16'b0;
+				state <= PHASE1;
+			end
+		end
 
+		PHASE1: begin
+			start1 <= 1;
+			if(done1) begin
+				start1 <= 0;
+				w1 <= message[16];
+				w2 <= message[17];
+				w3 <= message[18];
+				w4 <= message[19];
+				state <= PHASE2;
+			end
+			else begin
+				state <= PHASE1;
+			end
+		end
+		endcase
+end
 
+assign done = (phase == IDLE);
 
+always_comb begin
+	if (phase == PHASE1) begin
+		mem_clk = mem_clk1;
+		mem_we = mem_we1;
+		mem_addr = mem_addr1;
+	end
+	else if (phase == PHASE2) begin
+		mem_clk = mem_clk2;
+		mem_we = mem_we2;
+		mem_addr = mem_addr2;
+	end
+	else if (phase == PHASE3) begin
+		mem_clk = mem_clk3;
+		mem_we = mem_we3;
+		mem_addr = mem_addr3;
+	end
+	else begin
+		mem_clk = clk;
+		mem_we = mem_we1;
+		mem_addr = mem_addr1;
+	end
+end
+
+sha256_one #(.NUM_OF_WORDS(20)) sha256_p1(
+.clk,
+.reset_n,
+.sha_start(start1),
+.input_message1(message[0]),
+.input_message2(message[1]),
+.input_message3(message[2]),
+.input_message4(message[3]),
+.input_message5(message[4]),
+.input_message6(message[5]),
+.input_message7(message[6]),
+.input_message8(message[7]),
+.input_message9(message[8]),
+.input_message10(message[9]),
+.input_message11(message[10]),
+.input_message12(message[11]),
+.input_message13(message[12]),
+.input_message14(message[13]),
+.input_message15(message[14]),
+.input_message16(message[15]),
+.h0_in(h0_in_p1),
+.h1_in(h1_in_p1),
+.h2_in(h2_in_p1),
+.h3_in(h3_in_p1),
+.h4_in(h4_in_p1),
+.h5_in(h5_in_p1),
+.h6_in(h6_in_p1),
+.h7_in(h7_in_p1),
+.sha_done(sha_done_p1),
+.h0_out(h0_out_p1),
+.h1_out(h1_out_p1),
+.h2_out(h2_out_p1),
+.h3_out(h3_out_p1),
+.h4_out(h4_out_p1),
+.h5_out(h5_out_p1),
+.h6_out(h6_out_p1),
+.h7_out(h7_out_p1)
+);
 
 endmodule
